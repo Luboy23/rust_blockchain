@@ -1,15 +1,16 @@
 use std::time::SystemTime; // 引入标准库中的 SystemTime，用于获取当前系统时间
 use crypto::{digest::Digest, sha2::Sha256}; // 引入 crypto 库中的 Digest trait 和 Sha256 结构体，用于进行哈希运算
-use log::info; // 引入 log 库中的 info 宏，用于日志记录
+use log::info;
+use serde::{Deserialize, Serialize}; // 引入 log 库中的 info 宏，用于日志记录
 
 // 定义一个通用结果类型 Result，用于错误处理，T 表示成功的返回值类型，failure::Error 表示错误类型
-pub type Result<T> = std::result::Result<T, failure::Error>;
+use crate::errors::Result;
 
 // 定义目标哈希的前缀长度为 4，表示我们需要找到哈希值前 4 位是 '0'
 const TARGET_HEXT: usize = 4;
 
 // 定义 Block 结构体，表示区块链中的区块
-#[derive(Debug, Clone)] // 派生 Debug 和 Clone trait，用于调试和复制
+#[derive(Debug, Clone, Serialize, Deserialize)] // 派生 Debug 和 Clone trait，用于调试和复制
 pub struct Block {
     timestamp: u128, // 时间戳，记录区块创建的时间
     transactions: String, // 交易信息，区块中包含的交易数据
@@ -19,13 +20,11 @@ pub struct Block {
     nonce: i32 // 随机数，用于工作量证明算法
 }
 
-// 定义 BlockChain 结构体，表示整个区块链
-#[derive(Debug)] // 派生 Debug trait，用于调试
-pub struct BlockChain {
-    blocks: Vec<Block> // 一个包含多个区块的数组，表示区块链的区块集合
-}
-
 impl Block {
+    pub(crate) fn get_prev_hash(&self) -> String {
+        self.prev_block_hash.clone()
+    }
+
     // 获取当前区块的哈希值，返回哈希值的副本
     pub fn get_hash(&self) -> String {
         self.hash.clone() // 返回区块哈希的副本
@@ -55,12 +54,12 @@ impl Block {
         };
 
         // 运行工作量证明算法，寻找符合条件的哈希值
-        block.run_proof_if_work()?;
+        block.run_proof_of_work()?;
         Ok(block) // 返回创建的区块
     }
 
     // 工作量证明算法，寻找符合目标的哈希值
-    fn run_proof_if_work(&mut self) -> Result<()> {
+    fn run_proof_of_work(&mut self) -> Result<()> {
         info!("Mining the block"); // 记录日志，表示开始挖矿
         // 不断递增 nonce，直到找到符合目标哈希前缀的哈希值
         while !self.validate()? {
@@ -101,33 +100,18 @@ impl Block {
     }
 }
 
-impl BlockChain {
-    // 创建并初始化一个包含创世区块的区块链
-    pub fn new() -> BlockChain {
-        BlockChain {
-            blocks: vec![Block::new_genesis_block()] // 创建一个包含创世区块的区块链
-        }
-    }
-
-    // 添加新的区块到区块链中
-    pub fn add_block(&mut self, data: String) -> Result<()> {
-        let prev = self.blocks.last().unwrap(); // 获取区块链中的最后一个区块
-        let new_block = Block::new_block(data, prev.get_hash(), TARGET_HEXT)?; // 创建一个新的区块
-        self.blocks.push(new_block); // 将新创建的区块添加到区块链中
-        Ok(())
-    }
-}
 
 #[cfg(test)] // 测试模块，用于编写单元测试
 mod tests {
-    use super::*; // 导入当前模块中的所有内容
+    use crate::blockchain::Blockchain;
 
     #[test] // 测试函数
-    fn test_blockchain() {
-        let mut b = BlockChain::new(); // 创建一个新的区块链
-        b.add_block("data".to_string()); // 向区块链中添加区块
-        b.add_block("data2".to_string()); // 添加另一个区块
-        b.add_block("data3".to_string()); // 添加第三个区块
-        dbg!(b); // 调试输出区块链内容
+    fn test_add_block() -> Result<(), failure::Error> {
+        let mut b = Blockchain::new()?; // 使用 `?` 解包结果
+        b.add_block("data".to_string())?;
+        b.add_block("data2".to_string())?;
+        b.add_block("data3".to_string())?;
+        dbg!(b);
+        Ok(())
     }
 }
