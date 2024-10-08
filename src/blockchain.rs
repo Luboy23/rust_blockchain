@@ -4,7 +4,8 @@ use std::collections::HashMap;
 // 定义 Blockchain 结构体，表示整个区块链
 use crate::block::Block;
 use crate::errors::Result;
-use crate::transaction::{TXOutput, Transaction};
+use crate::transaction::Transaction;
+use crate::tx::TXOutput;
 use log::info;
 const TARGET_HEXT: usize = 4;
 
