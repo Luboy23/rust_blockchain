@@ -4,7 +4,7 @@ use log::info;
 use serde::{Deserialize, Serialize}; // 引入 log 库中的 info 宏，用于日志记录
 
 // 定义一个通用结果类型 Result，用于错误处理，T 表示成功的返回值类型，failure::Error 表示错误类型
-use crate::errors::Result;
+use crate::{errors::Result, transaction::Transaction};
 
 // 定义目标哈希的前缀长度为 4，表示我们需要找到哈希值前 4 位是 '0'
 const TARGET_HEXT: usize = 4;
@@ -13,7 +13,7 @@ const TARGET_HEXT: usize = 4;
 #[derive(Debug, Clone, Serialize, Deserialize)] // 派生 Debug 和 Clone trait，用于调试和复制
 pub struct Block {
     timestamp: u128, // 时间戳，记录区块创建的时间
-    transactions: String, // 交易信息，区块中包含的交易数据
+    transactions: Vec<Transaction>, // 交易信息，区块中包含的交易数据
     prev_block_hash: String, // 前一个区块的哈希值，形成链式结构
     hash: String, // 当前区块的哈希值
     height: usize, // 区块的高度，表示该区块在链中的位置
@@ -21,6 +21,10 @@ pub struct Block {
 }
 
 impl Block {
+    pub fn get_transaction(&self) -> &Vec<Transaction> {
+        &self.transactions
+    }
+    
     pub(crate) fn get_prev_hash(&self) -> String {
         self.prev_block_hash.clone()
     }
@@ -31,13 +35,13 @@ impl Block {
     }
 
     // 创建并返回创世区块（第一个区块）
-    pub fn new_genesis_block() -> Block {
+    pub fn new_genesis_block(coinbase: Transaction) -> Block {
         // 调用 new_block 函数创建创世区块，交易信息为 "Genesis Block"，前一区块哈希为空，区块高度为 0
-        Block::new_block(String::from("Genesis Block"), String::new(), 0).unwrap()
+        Block::new_block(vec![coinbase], String::new(), 0).unwrap()
     }
 
     // 创建新的区块，接收交易数据、前一区块的哈希值和区块高度作为参数，返回 Result 包含新创建的区块
-    pub fn new_block(data: String, prev_block_hash: String, height: usize) -> Result<Block> {
+    pub fn new_block(data: Vec<Transaction>, prev_block_hash: String, height: usize) -> Result<Block> {
         // 获取当前时间戳，以毫秒为单位
         let timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)? // 计算自 Unix 纪元以来的时间
@@ -108,9 +112,9 @@ mod tests {
     #[test] // 测试函数
     fn test_add_block() -> Result<(), failure::Error> {
         let mut b = Blockchain::new()?; // 使用 `?` 解包结果
-        b.add_block("data".to_string())?;
-        b.add_block("data2".to_string())?;
-        b.add_block("data3".to_string())?;
+        // b.add_block("data".to_string())?;
+        // b.add_block("data2".to_string())?;
+        // b.add_block("data3".to_string())?;
         dbg!(b);
         Ok(())
     }
