@@ -110,13 +110,13 @@ impl Transaction {
         }
     }
 
-    fn hash(&mut self) -> Result<String> {
+    pub fn hash(&mut self) -> Result<String> {
         self.id = String::new();
         let data = bincode::serialize(self)?;
         let mut hasher = Sha256::new();
         hasher.input(&data[..]);
         Ok(hasher.result_str())
-    }
+    } 
 
     pub fn new_utxo(from: &str, to: &str, amount: i32, bc: &UTXOSet) -> Result<Transaction> {
         let mut vin = Vec::new();

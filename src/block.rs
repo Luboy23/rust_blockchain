@@ -1,4 +1,4 @@
-use std::time::SystemTime; // 引入标准库中的 SystemTime，用于获取当前系统时间
+use std::{time::SystemTime, vec}; // 引入标准库中的 SystemTime，用于获取当前系统时间
 use crypto::{digest::Digest, sha2::Sha256}; // 引入 crypto 库中的 Digest trait 和 Sha256 结构体，用于进行哈希运算
 use log::info;
 use serde::{Deserialize, Serialize}; // 引入 log 库中的 info 宏，用于日志记录
@@ -8,6 +8,7 @@ use crate::{errors::Result, transaction::Transaction};
 
 // 定义目标哈希的前缀长度为 4，表示我们需要找到哈希值前 4 位是 '0'
 const TARGET_HEXT: usize = 4;
+use merkle_cbt::merkle_tree::{Merge, CBMT};
 
 // 定义 Block 结构体，表示区块链中的区块
 #[derive(Debug, Clone, Serialize, Deserialize)] // 派生 Debug 和 Clone trait，用于调试和复制
@@ -76,6 +77,14 @@ impl Block {
         self.hash = hasher.result_str(); // 获取哈希值并赋值给区块的 hash 字段
         Ok(())
     }
+    fn hash_transactions(&mut self) -> Result<Vec<u8>> {
+        let mut transactions = Vec::new();
+        for tx in &mut self.transactions {
+            transactions.push(tx.hash()?.as_bytes().to_owned());
+        }
+        let tree = CBMT::<Vec<u8>, MergeTX>::build_merkle_tree(&transactions);
+        Ok(tree.root())
+    }
 
     // 准备哈希计算的数据，将区块的多个字段序列化为字节数组
     fn prepare_hash_data(&self) -> Result<Vec<u8>> {
@@ -104,6 +113,20 @@ impl Block {
     }
 }
 
+struct MergeTX{}
+
+impl Merge for MergeTX {
+    type Item = Vec<u8>;
+    fn merge(left: &Self::Item, right: &Self::Item) -> Self::Item {
+        let mut hasher = Sha256::new();
+        let mut data: Vec<u8> = left.clone();
+        data.append(&mut right.clone());
+        hasher.input(&data);
+        let mut re: [u8; 32] = [0; 32];
+        hasher.result(&mut re);
+        re.to_vec()
+    }
+}
 
 #[cfg(test)] // 测试模块，用于编写单元测试
 mod tests {
