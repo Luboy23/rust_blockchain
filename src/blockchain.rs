@@ -6,6 +6,7 @@ use crate::block::Block;
 use crate::errors::Result;
 use crate::transaction::Transaction;
 use crate::tx::TXOutput;
+use failure::format_err;
 use log::info;
 const TARGET_HEXT: usize = 4;
 
@@ -66,7 +67,7 @@ impl Blockchain {
         Ok(())
     }
 
-    fn find_unspent_transactions(&self, address: &str) -> Vec<Transaction> {
+    fn find_unspent_transactions(&self, address: &[u8]) -> Vec<Transaction> {
         let mut spent_txos: HashMap<String, Vec<u32>> = HashMap::new();
         let mut unspent_txs: Vec<Transaction> = Vec::new();
 
@@ -103,7 +104,7 @@ impl Blockchain {
         unspent_txs
     }
 
-    pub fn find_utxo(&self, address: &str) -> Vec<TXOutput> {
+    pub fn find_utxo(&self, address: &[u8]) -> Vec<TXOutput> {
         let mut utxos = Vec::<TXOutput>::new();
         let unspent_txs = self.find_unspent_transactions(address);
         for tx in unspent_txs {
@@ -116,7 +117,7 @@ impl Blockchain {
         utxos
     }
 
-    pub fn find_spendable_outputs(&self, address: &str, amount:i32) -> (i32, HashMap<String, Vec<i32>>) {
+    pub fn find_spendable_outputs(&self, address: &[u8], amount:i32) -> (i32, HashMap<String, Vec<i32>>) {
         let mut unspent_outputs: HashMap<String, Vec<i32>> = HashMap::new();
         let mut accumulated: i32 = 0;
         let unspent_txs = self.find_unspent_transactions(address);
@@ -140,6 +141,32 @@ impl Blockchain {
         }
         (accumulated, unspent_outputs)
     }    
+
+    pub fn find_transaction(&self, id: &str) -> Result<Transaction> {
+        for b in self.iter() {
+            for tx in b.get_transaction() {
+                if tx.id == id {
+                    return  Ok(tx.clone());
+                }
+            }
+        }
+        Err(format_err!("Transaction is not found"))
+    }
+
+    pub fn get_prev_txs(&self, tx:&Transaction) -> Result<HashMap<String, Transaction>> {
+        let mut prev_txs = HashMap::new();
+        for vin in &tx.vin {
+            let prev_tx = self.find_transaction(&vin.txid)?;
+            prev_txs.insert(prev_tx.id.clone(), prev_tx);
+        }
+        Ok(prev_txs)
+    }
+
+    pub fn sign_transaction(&self, tx: &mut Transaction, private_key: &[u8]) -> Result<()> {
+        let prev_txs = self.get_prev_txs(tx)?;
+        tx.sign(private_key, prev_txs)?;
+        Ok(())
+    }
 
 
     pub fn iter(&self) -> BlockchainIterator {
