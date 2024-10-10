@@ -5,3 +5,4 @@ pub mod cli;
 pub mod transaction;
 pub mod tx;
 pub mod wallet;
+pub mod utxoset;

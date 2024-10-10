@@ -6,6 +6,11 @@ use crate::{errors::Result, wallet::hash_pub_key};
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TXOutputs {
+    pub outputs: Vec<TXOutput>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TXInput {
     pub txid: String,
     pub vout: i32,
